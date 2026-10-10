@@ -1,0 +1,25 @@
+; C runtime functions that the BOF-PEs import from msvcrt.dll. Every listed
+; export exists in the msvcrt.dll shipped with Windows 7 and later.
+LIBRARY msvcrt.dll
+EXPORTS
+__wgetmainargs
+_errno
+_getpid
+_localtime64
+_mktime64
+_time64
+_vscprintf
+_vsnprintf
+_vsnwprintf
+free
+malloc
+memcmp
+memcpy
+memmove
+memset
+realloc
+strlen
+wcscmp
+wcslen
+wcsncmp
+wcstol

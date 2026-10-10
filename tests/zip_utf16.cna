@@ -1,0 +1,36 @@
+beacon_command_register(
+    "zip-utf16-test",
+    "Exercise ZIP BOF with pre-encoded UTF-16LE paths",
+    "Test-only helper for manual BOF path checks."
+);
+
+alias zip-utf16-test {
+    local('$bid $source $destination $level $disk_mode $working_directory');
+    local('$handle $bof $args');
+
+    $bid = @_[0];
+    if (size(@_) != 6) {
+        berror($bid, "Usage: zip-utf16-test <source-hex> <destination-hex> <level> <disk-mode> <cwd|->");
+        return;
+    }
+
+    $source = pack("H*", @_[1]);
+    $destination = pack("H*", @_[2]);
+    $level = @_[3];
+    $disk_mode = @_[4];
+    $working_directory = @_[5];
+
+    if ($working_directory ne "-" && !chdir($working_directory)) {
+        berror($bid, "Cannot change test working directory to " . $working_directory);
+        return;
+    }
+
+    $handle = openf(script_resource("zip.x64.o"));
+    $bof = readb($handle, -1);
+    closef($handle);
+
+    # The byte strings already include UTF-16LE terminators. Format b adds the
+    # same length prefix that production's bof_pack Z emits.
+    $args = bof_pack($bid, "bbii", $source, $destination, $level, $disk_mode);
+    beacon_inline_execute($bid, $bof, "go", $args);
+}
