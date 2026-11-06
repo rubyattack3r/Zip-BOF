@@ -28,7 +28,7 @@ names. Each script selects the artifact that matches the Beacon's
 architecture.
 
 ```text
-zip <source> <destination.zip> [level 0-9] [--disk]
+zip <source> <destination.zip> [level 0-9] [--disk|--force]
 unzip <archive.zip> <new-directory>
 ```
 
@@ -43,6 +43,9 @@ unzip C:\Windows\Temp\example.zip C:\Windows\Temp\extracted-example
 - By default, `zip` builds the archive in memory and downloads it through
   Beacon; `destination.zip` is the download name. With `--disk`,
   `destination.zip` is a path on the target instead.
+- `--force` still downloads through Beacon but disables the 64 MiB input and
+  100,000-entry in-memory guards. It can exhaust Beacon memory and destabilize
+  the process. Beacon's maximum representable download size still applies.
 - The compression level defaults to `6`.
 - The `unzip` destination must not already exist.
 - Quote paths that contain spaces.
@@ -52,7 +55,8 @@ unzip C:\Windows\Temp\example.zip C:\Windows\Temp\extracted-example
 ### `zip`
 
 - Download mode (the default) accepts at most 64 MiB of input and 100,000
-  entries. Use `--disk` for larger sources; it is not subject to these limits.
+  entries. Use `--disk` for larger sources; it is not subject to these limits,
+  or explicitly accept the memory risk with `--force`.
 - `--disk` writes to a temporary file beside the destination and replaces the
   destination only after the archive is built successfully.
 - ZIP64 is used when an archive needs it, such as when it has more than

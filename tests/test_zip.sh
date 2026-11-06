@@ -90,6 +90,9 @@ fi
 "$ZIP_BIN" "$TEST_ROOT/large.bin" \
     "$TEST_ROOT/large-disk.zip" 1 --disk >/dev/null
 unzip -t "$TEST_ROOT/large-disk.zip" >/dev/null
+"$ZIP_BIN" "$TEST_ROOT/large.bin" \
+    "$TEST_ROOT/large-force.zip" 1 --force >/dev/null
+unzip -t "$TEST_ROOT/large-force.zip" >/dev/null
 
 # A directory with 65,535 files plus its root entry crosses the classic ZIP
 # limit and must contain a complete ZIP64 end record. Keep the files empty so

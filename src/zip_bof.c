@@ -71,12 +71,12 @@ void go(const char *data, int length)
 {
     datap parser;
     zip_result result;
+    zip_options options;
     WCHAR *source;
     WCHAR *destination;
     int source_length = 0;
     int destination_length = 0;
-    int level;
-    int disk_mode;
+    int output_mode;
     void *archive_data = NULL;
     size_t archive_size = 0;
     const WCHAR *download_name_wide;
@@ -95,17 +95,21 @@ void go(const char *data, int length)
                      "zip: invalid UTF-16 path arguments\n");
         return;
     }
-    level = BeaconDataInt(&parser);
-    disk_mode = BeaconDataInt(&parser);
-    if (level < 0 || level > 9) {
+    options.source = source;
+    options.destination = destination;
+    options.compression_level = BeaconDataInt(&parser);
+    output_mode = BeaconDataInt(&parser);
+    if (options.compression_level < 0 || options.compression_level > 9) {
         BeaconPrintf(CALLBACK_ERROR_UTF8,
                      "zip: compression level must be between 0 and 9\n");
         return;
     }
-    if (disk_mode != 0 && disk_mode != 1) {
-        BeaconPrintf(CALLBACK_ERROR_UTF8, "zip: invalid disk mode\n");
+    if (output_mode < (int)ZIP_OUTPUT_DOWNLOAD ||
+        output_mode > (int)ZIP_OUTPUT_FORCE_DOWNLOAD) {
+        BeaconPrintf(CALLBACK_ERROR_UTF8, "zip: invalid output mode\n");
         return;
     }
+    options.output_mode = (zip_output_mode)output_mode;
 
     source_utf8 = wide_to_utf8(source);
     destination_utf8 = wide_to_utf8(destination);
@@ -115,11 +119,12 @@ void go(const char *data, int length)
         goto cleanup;
     }
 
-    if (disk_mode == 1) {
+    if (options.output_mode == ZIP_OUTPUT_DISK) {
         BeaconPrintf(CALLBACK_OUTPUT_UTF8,
                      "zip: writing '%s' from '%s' at level %d\n",
-                     destination_utf8, source_utf8, level);
-        if (zip_create_archive(source, destination, level, &result) != 0) {
+                     destination_utf8, source_utf8,
+                     options.compression_level);
+        if (zip_create_archive(&options, &result) != 0) {
             BeaconPrintf(CALLBACK_ERROR_UTF8,
                          "zip: disk write failed: %s\n",
                          result.error);
@@ -144,9 +149,9 @@ void go(const char *data, int length)
     }
     BeaconPrintf(CALLBACK_OUTPUT_UTF8,
                  "zip: building '%s' in memory from '%s' at level %d\n",
-                 download_name, source_utf8, level);
+                 download_name, source_utf8, options.compression_level);
 
-    if (zip_create_archive_memory(source, destination, level, &archive_data,
+    if (zip_create_archive_memory(&options, &archive_data,
                                   &archive_size, &result) == 0) {
         if (archive_size <= (size_t)UINT_MAX &&
             BeaconDownload(download_name, (const char *)archive_data,

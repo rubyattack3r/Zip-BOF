@@ -535,12 +535,13 @@ static int replace_destination(const zip_path_char *temporary,
     return 0;
 }
 
-int zip_create_archive(const zip_path_char *source_path,
-                       const zip_path_char *destination_path,
-                       int compression_level,
+int zip_create_archive(const zip_options *options,
                        zip_result *result)
 {
     zip_context context;
+    const zip_path_char *source_path;
+    const zip_path_char *destination_path;
+    int compression_level;
     enum zip_path_kind source_kind;
     zip_path_char *source_absolute = NULL;
     zip_path_char *destination_absolute = NULL;
@@ -557,8 +558,20 @@ int zip_create_archive(const zip_path_char *source_path,
     }
     memset(result, 0, sizeof(*result));
     memset(&context, 0, sizeof(context));
+    if (options == NULL) {
+        set_error(result, "zip options are required");
+        goto cleanup;
+    }
+    source_path = options->source;
+    destination_path = options->destination;
+    compression_level = options->compression_level;
     context.compression_level = compression_level;
     context.result = result;
+
+    if (options->output_mode != ZIP_OUTPUT_DISK) {
+        set_error(result, "disk output mode is required");
+        goto cleanup;
+    }
 
     if (source_path == NULL || source_path[0] == (zip_path_char)'\0' ||
         destination_path == NULL ||
@@ -740,14 +753,15 @@ cleanup:
     return status;
 }
 
-int zip_create_archive_memory(const zip_path_char *source_path,
-                              const zip_path_char *excluded_output_path,
-                              int compression_level,
+int zip_create_archive_memory(const zip_options *options,
                               void **archive_data,
                               size_t *archive_size,
                               zip_result *result)
 {
     zip_context context;
+    const zip_path_char *source_path;
+    const zip_path_char *excluded_output_path;
+    int compression_level;
     enum zip_path_kind source_kind;
     zip_path_char *source_absolute = NULL;
     zip_path_char *output_absolute = NULL;
@@ -766,9 +780,21 @@ int zip_create_archive_memory(const zip_path_char *source_path,
     }
     memset(result, 0, sizeof(*result));
     memset(&context, 0, sizeof(context));
+    if (options == NULL) {
+        set_error(result, "zip options are required");
+        goto cleanup;
+    }
+    source_path = options->source;
+    excluded_output_path = options->destination;
+    compression_level = options->compression_level;
     context.compression_level = compression_level;
-    context.max_input_bytes = ZIP_MEMORY_INPUT_LIMIT;
-    context.max_entries = ZIP_MEMORY_ENTRY_LIMIT;
+    if (options->output_mode == ZIP_OUTPUT_DOWNLOAD) {
+        context.max_input_bytes = ZIP_MEMORY_INPUT_LIMIT;
+        context.max_entries = ZIP_MEMORY_ENTRY_LIMIT;
+    } else if (options->output_mode != ZIP_OUTPUT_FORCE_DOWNLOAD) {
+        set_error(result, "download output mode is required");
+        goto cleanup;
+    }
     context.result = result;
 
     if (archive_data == NULL || archive_size == NULL) {
