@@ -5,6 +5,11 @@ is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `zip --force` to bypass the in-memory input and entry guards when explicitly
+  forcing a Beacon download.
+
 ## [0.1.0] - 2026-10-10
 
 ### Added

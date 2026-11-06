@@ -5,7 +5,7 @@ beacon_command_register(
     "Build a ZIP archive in Beacon memory and queue it as a Beacon download. " .
     "With --disk, write the archive to a path on the target instead.\n\n" .
     "Usage:\n" .
-    "  zip <source> <destination.zip> [level 0-9] [--disk]\n\n" .
+    "  zip <source> <destination.zip> [level 0-9] [--disk|--force]\n\n" .
     "Arguments:\n" .
     "  source           File or directory to archive; directories are " .
     "archived recursively\n" .
@@ -13,9 +13,12 @@ beacon_command_register(
     "  level            Compression level from 0 to 9 (default: 6)\n\n" .
     "Options:\n" .
     "  --disk           Write the archive to the target; it replaces the " .
-    "destination only after the archive is built\n\n" .
+    "destination only after the archive is built\n" .
+    "  --force          Force an in-memory Beacon download without the input " .
+    "or entry guards; this may destabilize Beacon\n\n" .
     "Without --disk, the source may contain at most 64 MiB and 100,000 " .
-    "entries; use --disk for larger sources. Symbolic links and other " .
+    "entries; use --disk for larger sources or --force to explicitly accept " .
+    "the memory risk. Symbolic links and other " .
     "reparse points are skipped.\n\n" .
     "Relative, drive (C:\\...), and UNC (\\\\server\\share\\...) paths " .
     "are supported, including non-ASCII names. Drive-relative (C:file), " .
@@ -29,22 +32,25 @@ beacon_command_register(
 );
 
 alias zip {
-    local('$bid $source $destination $level $disk_mode $handle $pe $args $arch');
+    local('$bid $source $destination $level $output_mode $handle $pe $args $arch');
 
     $bid = @_[0];
     if (size(@_) < 3 || size(@_) > 5) {
-        berror($bid, "Usage: zip <source> <destination.zip> [level 0-9] [--disk]");
+        berror($bid, "Usage: zip <source> <destination.zip> [level 0-9] [--disk|--force]");
         return;
     }
 
     $source = @_[1];
     $destination = @_[2];
     $level = 6;
-    $disk_mode = 0;
+    $output_mode = 0;
 
     if (size(@_) == 4) {
         if (@_[3] eq "--disk") {
-            $disk_mode = 1;
+            $output_mode = 1;
+        }
+        else if (@_[3] eq "--force") {
+            $output_mode = 2;
         }
         else {
             $level = @_[3];
@@ -52,11 +58,16 @@ alias zip {
     }
     if (size(@_) == 5) {
         $level = @_[3];
-        if (@_[4] ne "--disk") {
+        if (@_[4] eq "--disk") {
+            $output_mode = 1;
+        }
+        else if (@_[4] eq "--force") {
+            $output_mode = 2;
+        }
+        else {
             berror($bid, "Unknown option: " . @_[4]);
             return;
         }
-        $disk_mode = 1;
     }
 
     if ("$level" !in @("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")) {
@@ -75,9 +86,12 @@ alias zip {
 
     # Wide-string packing keeps target paths independent of the active ANSI
     # code page. The BOF-PE validates and consumes both values as UTF-16LE.
-    $args = bof_pack($bid, "ZZii", $source, $destination, $level, $disk_mode);
-    if ($disk_mode == 1) {
+    $args = bof_pack($bid, "ZZii", $source, $destination, $level, $output_mode);
+    if ($output_mode == 1) {
         btask($bid, "Writing ZIP archive " . $destination . " from " . $source);
+    }
+    else if ($output_mode == 2) {
+        btask($bid, "Forcing in-memory ZIP download " . $destination . " from " . $source . " without safety limits");
     }
     else {
         btask($bid, "Creating in-memory ZIP download " . $destination . " from " . $source);

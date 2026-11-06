@@ -22,51 +22,60 @@ static int parse_level(const char *text, int *level)
 int main(int argc, char **argv)
 {
     zip_result result;
-    int level = 6;
+    zip_options options;
     void *archive_data = NULL;
     size_t archive_size = 0;
     FILE *output;
     size_t written;
     int close_status;
-    int disk_mode = 0;
 
     if (argc < 3 || argc > 5) {
         fprintf(stderr,
-                "usage: %s <source> <destination.zip> [level 0-9] [--disk]\n",
+                "usage: %s <source> <destination.zip> [level 0-9] "
+                "[--disk|--force]\n",
                 argv[0]);
         return 2;
     }
+    options.source = argv[1];
+    options.destination = argv[2];
+    options.compression_level = 6;
+    options.output_mode = ZIP_OUTPUT_DOWNLOAD;
     if (argc == 4) {
         if (strcmp(argv[3], "--disk") == 0) {
-            disk_mode = 1;
-        } else if (parse_level(argv[3], &level) != 0) {
+            options.output_mode = ZIP_OUTPUT_DISK;
+        } else if (strcmp(argv[3], "--force") == 0) {
+            options.output_mode = ZIP_OUTPUT_FORCE_DOWNLOAD;
+        } else if (parse_level(argv[3], &options.compression_level) != 0) {
             fprintf(stderr,
-                    "error: expected compression level 0-9 or --disk\n");
+                    "error: expected compression level 0-9, --disk, or --force\n");
             return 2;
         }
     }
     if (argc == 5) {
-        if (parse_level(argv[3], &level) != 0) {
+        if (parse_level(argv[3], &options.compression_level) != 0) {
             fprintf(stderr,
                     "error: compression level must be between 0 and 9\n");
             return 2;
         }
-        if (strcmp(argv[4], "--disk") != 0) {
+        if (strcmp(argv[4], "--disk") == 0) {
+            options.output_mode = ZIP_OUTPUT_DISK;
+        } else if (strcmp(argv[4], "--force") == 0) {
+            options.output_mode = ZIP_OUTPUT_FORCE_DOWNLOAD;
+        } else {
             fprintf(stderr, "error: unknown option: %s\n", argv[4]);
             return 2;
         }
-        disk_mode = 1;
     }
 
-    if (disk_mode) {
-        if (zip_create_archive(argv[1], argv[2], level, &result) != 0) {
+    if (options.output_mode == ZIP_OUTPUT_DISK) {
+        if (zip_create_archive(&options, &result) != 0) {
             fprintf(stderr, "error: %s\n", result.error);
             return 1;
         }
         goto success;
     }
 
-    if (zip_create_archive_memory(argv[1], argv[2], level, &archive_data,
+    if (zip_create_archive_memory(&options, &archive_data,
                                   &archive_size, &result) != 0) {
         fprintf(stderr, "error: %s\n", result.error);
         return 1;

@@ -25,24 +25,35 @@ typedef struct zip_result {
     char error[ZIP_ERROR_CAPACITY];
 } zip_result;
 
+typedef enum zip_output_mode {
+    ZIP_OUTPUT_DOWNLOAD = 0,
+    ZIP_OUTPUT_DISK = 1,
+    ZIP_OUTPUT_FORCE_DOWNLOAD = 2
+} zip_output_mode;
+
+typedef struct zip_options {
+    const zip_path_char *source;
+    const zip_path_char *destination;
+    int compression_level;
+    zip_output_mode output_mode;
+} zip_options;
+
 /*
- * Archives source_path as a single root entry at destination_path.
- * compression_level is in the inclusive range 0..9.
+ * Archives options->source as a single root entry at options->destination.
+ * options->compression_level is in the inclusive range 0..9 and the output
+ * mode must be ZIP_OUTPUT_DISK.
  * Returns 0 on success and -1 on failure; failure details are in result.
  */
-int zip_create_archive(const zip_path_char *source_path,
-                       const zip_path_char *destination_path,
-                       int compression_level,
+int zip_create_archive(const zip_options *options,
                        zip_result *result);
 
 /*
- * Creates the same archive entirely in memory. excluded_output_path is omitted
- * if it is beneath source_path. The caller owns *archive_data on success and
- * must release it with zip_free_archive().
+ * Creates the same archive entirely in memory. options->destination is omitted
+ * if it is beneath options->source. ZIP_OUTPUT_FORCE_DOWNLOAD bypasses the
+ * input and entry guards. The caller owns *archive_data on success and must
+ * release it with zip_free_archive().
  */
-int zip_create_archive_memory(const zip_path_char *source_path,
-                              const zip_path_char *excluded_output_path,
-                              int compression_level,
+int zip_create_archive_memory(const zip_options *options,
                               void **archive_data,
                               size_t *archive_size,
                               zip_result *result);
